@@ -11,10 +11,12 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
+import scyuan.spring.boot.autoconfigure.annotation.GrpcService;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * Created by yuanshichao on 16/2/18.
@@ -26,6 +28,7 @@ public class GrpcServerRunner implements CommandLineRunner, DisposableBean {
 
     private static final String BIND_SERVICE_METHOD_NAME = "bindService";
 
+    private static final String GRPC_CLASS_NAME_POSTFIX = "Grpc";
     @Autowired
     private ApplicationContext applicationContext;
 
@@ -40,16 +43,17 @@ public class GrpcServerRunner implements CommandLineRunner, DisposableBean {
         final ServerBuilder<?> serverBuilder = ServerBuilder.forPort(grpcServerProperties.getPort());
 
         for (final Object grpcService : applicationContext.getBeansWithAnnotation(GrpcService.class).values()) {
-            final Class<?> grpcServiceOuterClass
-                    = AnnotationUtils.findAnnotation(grpcService.getClass(), GrpcService.class).outerClass();
-
-            final Optional<Method> bindServiceMethod
-                    = Arrays.asList(ReflectionUtils.getAllDeclaredMethods(grpcServiceOuterClass)).stream()
-                        .filter(method ->
-                                    BIND_SERVICE_METHOD_NAME.equals(method.getName())
-                                    && method.getParameterCount() == 1
-                                    && method.getParameterTypes()[0].isAssignableFrom(grpcService.getClass()))
-                        .findFirst();
+            final Optional<Method> bindServiceMethod = Stream.of(grpcService.getClass().getInterfaces())
+                    .map(aClass -> Optional.ofNullable(aClass.getEnclosingClass()))
+                    .filter(Optional::isPresent)
+                    .map(opt -> opt.get())
+                    .filter(eClass -> eClass.getName().endsWith(GRPC_CLASS_NAME_POSTFIX))
+                    .flatMap(eClass -> Stream.of(ReflectionUtils.getAllDeclaredMethods(eClass)))
+                    .filter(method ->
+                            BIND_SERVICE_METHOD_NAME.equals(method.getName())
+                            && method.getParameterCount() == 1
+                            && method.getParameterTypes()[0].isAssignableFrom(grpcService.getClass()))
+                    .findFirst();
 
             if (bindServiceMethod.isPresent()) {
                 ServerServiceDefinition serviceDefinition
@@ -58,10 +62,8 @@ public class GrpcServerRunner implements CommandLineRunner, DisposableBean {
                 LOG.info("'" + serviceDefinition.getName() + "' service has been registered.");
             } else {
                 throw new IllegalArgumentException(
-                        "Failed to find '" + bindServiceMethod + "' method on class " + grpcServiceOuterClass.getName() +  ". "
-                                + "Please make sure you've provided correct 'outClass' attribute for '" + GrpcService.class.getName() + "' annotation. "
-                                + "It should be the protoc-generated outer class of your service.");
-
+                        "Failed to find '" + BIND_SERVICE_METHOD_NAME + "' method for '" +
+                                grpcService.getClass().getName() + "' class.");
             }
         }
 
