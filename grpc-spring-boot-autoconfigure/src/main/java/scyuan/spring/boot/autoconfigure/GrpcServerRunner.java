@@ -9,12 +9,10 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 import scyuan.spring.boot.autoconfigure.annotation.GrpcService;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.Stream;
 
