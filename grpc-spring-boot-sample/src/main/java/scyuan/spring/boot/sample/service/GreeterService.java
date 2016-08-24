@@ -11,7 +11,7 @@ import scyuan.spring.boot.sample.helloworld.HelloRequest;
  */
 
 @GrpcService
-public class GreeterService implements GreeterGrpc.Greeter {
+public class GreeterService extends GreeterGrpc.GreeterImplBase {
     @Override
     public void sayHello(HelloRequest request, StreamObserver<HelloReply> responseObserver) {
         HelloReply reply = HelloReply.newBuilder().setMessage("Hello " + request.getName()).build();
