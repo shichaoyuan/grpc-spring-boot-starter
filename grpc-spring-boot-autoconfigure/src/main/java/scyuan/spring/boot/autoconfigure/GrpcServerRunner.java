@@ -26,9 +26,6 @@ public class GrpcServerRunner implements CommandLineRunner, DisposableBean {
 
     private static final Log LOG = LogFactory.getLog(GrpcServerRunner.class);
 
-    private static final String BIND_SERVICE_METHOD_NAME = "bindService";
-
-    private static final String GRPC_CLASS_NAME_POSTFIX = "Grpc";
     @Autowired
     private ApplicationContext applicationContext;
 
@@ -47,28 +44,8 @@ public class GrpcServerRunner implements CommandLineRunner, DisposableBean {
                 serverBuilder.addService((BindableService)grpcService);
                 LOG.info("'" + grpcService.getClass().getSimpleName() + "' service has been registered.");
             } else {
-                final Optional<Method> bindServiceMethod = Stream.of(grpcService.getClass().getInterfaces())
-                        .map(aClass -> Optional.ofNullable(aClass.getEnclosingClass()))
-                        .filter(Optional::isPresent)
-                        .map(opt -> opt.get())
-                        .filter(eClass -> eClass.getName().endsWith(GRPC_CLASS_NAME_POSTFIX))
-                        .flatMap(eClass -> Stream.of(ReflectionUtils.getAllDeclaredMethods(eClass)))
-                        .filter(method ->
-                                BIND_SERVICE_METHOD_NAME.equals(method.getName())
-                                        && method.getParameterCount() == 1
-                                        && method.getParameterTypes()[0].isAssignableFrom(grpcService.getClass()))
-                        .findFirst();
-                if (bindServiceMethod.isPresent()) {
-                    ServerServiceDefinition serviceDefinition
-                            = (ServerServiceDefinition)bindServiceMethod.get().invoke(null, grpcService);
-                    serverBuilder.addService(serviceDefinition);
-                    LOG.info("'" + grpcService.getClass().getSimpleName() + "' service has been registered.");
-
-                } else {
-                    throw new IllegalArgumentException(
-                            "Failed to find '" + BIND_SERVICE_METHOD_NAME + "' method for '" +
-                                    grpcService.getClass().getName() + "' class.");
-                }
+                throw new IllegalArgumentException("'" +grpcService.getClass().getName() +
+                        "' don't implement the BindableService interface");
             }
         }
 
